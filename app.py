@@ -13,6 +13,7 @@ from etrm.pipeline import run_pipeline
 from etrm.pnl import Scenario
 from etrm.price_curve import build_price_curve
 from etrm.trade import PROFILES, Trade
+from etrm.var import load_dam_history, position_profile, var_summary
 
 
 # ============================================================
@@ -460,9 +461,16 @@ with st.sidebar:
     )
 
     st.divider()
-
+    
     st.caption("GENAI HOUSTON HUB ETRM")
     st.caption("Market analytics · Portfolio risk · AI insights")
+
+    st.divider()
+    st.markdown("### 04 / Value at Risk")
+    var_file = st.file_uploader("DAM price history CSV (90 days)", type="csv")
+    var_conf = st.select_slider("Confidence", [0.90, 0.95, 0.99], value=0.95,
+                                format_func=lambda x: f"{x:.0%}")
+    var_horizon = st.number_input("Horizon (days)", min_value=1, max_value=10, value=1)
 
 
 # ============================================================
@@ -653,7 +661,8 @@ tabs = st.tabs([
     "03  Net Position",
     "04  MtM & P&L",
     "05  Stress Testing",
-    "06  AI Copilot"
+    "06  VaR & Risk",
+    "07  AI Copilot"
 ])
 
 
@@ -888,9 +897,46 @@ with tabs[4]:
         use_container_width=True
     )
 
-
 # ============================================================
-# 06 AI COPILOT
+# 06 VALUE AT RISK
+# ============================================================
+with tabssection_title(
+        "Value at Risk",
+        "P&L risk of the hourly net position from HB_HOUSTON DAM price history"
+    )
+    if var_file is None:
+        st.info("Upload a DAM price history CSV in the sidebar "
+                "(date, hour_ending, price — or the raw ERCOT DAM SPP export).")
+    else:
+        try:
+            hist_curve = load_dam_history(var_file)
+            pos = position_profile(res["net"])
+            out = var_summary(hist_curve, pos, conf=var_conf, horizon_days=var_horizon)
+        except ValueError as e:
+            st.error(f"VaR input problem: {e}")
+        else:
+            tbl = out["table"]
+            for col, (_, r) in zip(st.columns(3), tbl.iterrows()):
+                col.metric(f"{r['method']} VaR", usd(r["var_usd"]),
+                           f"ES {usd(r['es_usd'])}", delta_color="off")
+            st.caption(f"{out['days']} days of DAM history · {var_conf:.0%} confidence · "
+                       f"{var_horizon}-day horizon · ES = average loss beyond VaR")
+
+            st.divider()
+            st.markdown("#### Historical 1-day P&L distribution")
+            counts = pd.cut(pd.Series(out["hist_pnl"]), 30).value_counts().sort_index()
+            counts.index = [round(i.mid) for i in counts.index]
+            st.bar_chart(counts, use_container_width=True)
+
+            left, right = st.columns(2)
+            with left:
+                st.markdown("#### Position used (avg MW by hour ending)")
+                st.bar_chart(pos, use_container_width=True)
+            with right:
+                st.markdown("#### VaR by method")
+                st.dataframe(tbl, hide_index=True, use_container_width=True)
+# ============================================================
+# 07 AI COPILOT
 # ============================================================
 
 with tabs[5]:
