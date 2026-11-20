@@ -13,8 +13,85 @@ from etrm.pipeline import run_pipeline
 from etrm.pnl import Scenario
 from etrm.price_curve import build_price_curve
 from etrm.trade import PROFILES, Trade
-from etrm.var import load_dam_history, position_profile, var_summary
 
+import numpy as np
+from statistics import NormalDist
+
+_norm = NormalDist()
+
+
+# ============================================================
+# VALUE AT RISK (inline)
+# ============================================================
+
+def load_dam_history(file, hub="HB_HOUSTON", min_days=30):
+    df = pd.read_csv(file)
+    cols = {c.lower().replace(" ", "").replace("_", ""): c for c in df.columns}
+
+    def pick(*names):
+        for n in names:
+            if n in cols:
+                return cols[n]
+        raise ValueError(f"CSV is missing a column like {names}")
+
+    d = pick("date", "deliverydate", "operday")
+    h = pick("hourending", "he", "hour")
+    p = pick("price", "settlementpointprice", "spp", "lmp")
+    sp = next((cols[n] for n in ("settlementpoint", "settlementpointname") if n in cols), None)
+    if sp:
+        df = df[df[sp].astype(str).str.upper() == hub.upper()]
+
+    out = pd.DataFrame({
+        "date": pd.to_datetime(df[d]).dt.date,
+        "hour_ending": df[h].astype(str).str.split(":").str[0].astype(int),
+        "price": pd.to_numeric(df[p], errors="coerce"),
+    }).dropna()
+
+    curve = (out.pivot_table(index="date", columns="hour_ending", values="price", aggfunc="mean")
+                .sort_index().reindex(columns=range(1, 25)))
+    curve = curve.dropna(thresh=20).ffill(axis=1).bfill(axis=1)
+    if len(curve) < min_days:
+        raise ValueError(f"Need at least {min_days} days of history, got {len(curve)}")
+    return curve
+
+
+def position_profile(net):
+    s = net["net_mwh"] if isinstance(net, pd.DataFrame) else net
+    he = pd.DatetimeIndex(s.index).hour + 1
+    return s.groupby(he).mean().reindex(range(1, 25), fill_value=0.0).astype(float)
+
+
+def var_summary(curve, pos, conf=0.95, horizon_days=1, n_sims=10_000, seed=42):
+    dP = curve.diff().dropna()
+    w = pos.values
+    k = np.sqrt(horizon_days)
+
+    # Historical
+    hist_pnl = dP.values @ w
+    hv = -np.percentile(hist_pnl, (1 - conf) * 100)
+    he = -hist_pnl[hist_pnl <= -hv].mean()
+
+    # Parametric
+    mu = dP.mean().values @ w
+    sigma = float(np.sqrt(w @ dP.cov().values @ w))
+    z = _norm.inv_cdf(conf)
+    pv = z * sigma - mu
+    pe = sigma * _norm.pdf(z) / (1 - conf) - mu
+
+    # Monte Carlo
+    rng = np.random.default_rng(seed)
+    sims = rng.multivariate_normal(dP.mean().values, dP.cov().values,
+                                   size=n_sims, check_valid="ignore")
+    mc_pnl = sims @ w
+    mv = -np.percentile(mc_pnl, (1 - conf) * 100)
+    me = -mc_pnl[mc_pnl <= -mv].mean()
+
+    table = pd.DataFrame({
+        "method": ["Historical", "Parametric", "Monte Carlo"],
+        "var_usd": [hv * k, pv * k, mv * k],
+        "es_usd": [he * k, pe * k, me * k],
+    }).round(0)
+    return {"table": table, "hist_pnl": hist_pnl, "days": len(curve)}
 
 # ============================================================
 # PAGE CONFIGURATION
