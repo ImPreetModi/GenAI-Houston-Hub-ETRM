@@ -76,24 +76,4 @@ API calls (and spend) on your accounts. Pick one:
   a spend limit on the Anthropic key. Results are cached for 1 hour, which limits ERCOT calls.
 
 ### A) Streamlit Community Cloud (free)
-Push to GitHub → share.streamlit.io → New app → `app.py` → *Advanced settings → Secrets* (only if keeping it private).
-
-### B) Google Cloud Run
-```bash
-gcloud run deploy houston-etrm --source . --region us-central1 --allow-unauthenticated   # public, no secrets
-# private + live ERCOT: store secrets in Secret Manager, drop --allow-unauthenticated
-gcloud run deploy houston-etrm --source . --region us-central1 \
-  --set-secrets ERCOT_USERNAME=ercot-user:latest,ERCOT_PASSWORD=ercot-pass:latest,ERCOT_SUBSCRIPTION_KEY=ercot-key:latest
-```
-The `Dockerfile` listens on `$PORT`.
-
-## Limitations to state in interviews
-Forward proxy ≠ forward curve; NERC holidays ignored in on-peak; DAM prices only (no RTM settlement);
-no basis/congestion, credit or VaR; dates older than ~90 days may need ERCOT's archive endpoint.
-
-## Roadmap
-1. Real forward curve input + RTM (NP6-905-CD) for realized/settled P&L
-2. Scheduled ingestion → Postgres/Parquet instead of per-session API pulls
-3. VaR/Monte Carlo on the proxy; basis risk vs a load zone
-4. Guardrail that verifies every number in the AI answer against the context
-5. GitHub Actions CI
+Push to GitHub → share.streamlit.io
