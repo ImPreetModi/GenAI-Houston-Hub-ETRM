@@ -1103,6 +1103,6 @@ st.markdown("""
     <br><br>
     Commodity Analytics · Portfolio Risk · Market Intelligence
     <br>
-    For demonstration and analytical purposes. Not an execution platform.
+    PREET MODI
 </div>
 """, unsafe_allow_html=True)
