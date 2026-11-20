@@ -1,5 +1,4 @@
-"""Streamlit front end: trade -> deliveries -> net position -> MtM -> stress -> AI copilot.
-Prices come live from the ERCOT Public API (HB_HOUSTON DAM SPP), with a synthetic offline fallback."""
+
 import os
 from datetime import date
 
@@ -15,8 +14,268 @@ from etrm.pnl import Scenario
 from etrm.price_curve import build_price_curve
 from etrm.trade import PROFILES, Trade
 
-st.set_page_config(page_title="Houston Hub Trading Copilot", page_icon="⚡", layout="wide")
 
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
+st.set_page_config(
+    page_title="GenAI Houston Hub | ETRM",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# ============================================================
+# CUSTOM DESIGN SYSTEM
+# ============================================================
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --bg: #080f1c;
+    --panel: #101c2e;
+    --panel2: #142238;
+    --border: #233750;
+    --cyan: #00c8e8;
+    --blue: #3185f5;
+    --text: #e7f0fa;
+    --muted: #8da2b9;
+    --green: #27d69b;
+    --red: #ff667d;
+}
+
+.stApp {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
+.block-container {
+    max-width: 1600px;
+    padding-top: 1.7rem;
+    padding-bottom: 3rem;
+}
+
+[data-testid="stSidebar"] {
+    background: #0b1728;
+    border-right: 1px solid var(--border);
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 1.5rem;
+}
+
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p {
+    color: #c4d3e3 !important;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: var(--text) !important;
+}
+
+h1, h2, h3, h4 {
+    color: var(--text) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+p, label, span {
+    font-family: 'Inter', sans-serif;
+}
+
+.eyebrow {
+    color: var(--cyan);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.hero {
+    background: linear-gradient(110deg, #122942 0%, #102137 55%, #102d48 100%);
+    border: 1px solid #26445f;
+    border-radius: 15px;
+    padding: 26px 30px;
+    margin: 5px 0 25px 0;
+}
+
+.hero-title {
+    color: #f1f7ff;
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin: 0;
+}
+
+.hero-subtitle {
+    color: #a6bdd2;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.hero-tag {
+    display: inline-block;
+    background: #123c51;
+    border: 1px solid #17627a;
+    color: #50ddf2;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 9px;
+    letter-spacing: 1px;
+    margin-top: 15px;
+}
+
+.kpi-card {
+    background: linear-gradient(145deg, #14243a, #101b2d);
+    border: 1px solid #263b54;
+    border-radius: 12px;
+    padding: 19px 20px;
+    min-height: 112px;
+}
+
+.kpi-label {
+    color: #91a8bf;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.kpi-value {
+    color: #f0f6ff;
+    font-family: 'DM Mono', monospace;
+    font-size: 25px;
+    font-weight: 500;
+    margin-top: 13px;
+}
+
+.kpi-sub {
+    color: #8198af;
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+.section-heading {
+    color: #eaf3ff;
+    font-size: 17px;
+    font-weight: 700;
+    margin: 8px 0 5px 0;
+}
+
+.section-caption {
+    color: #8298b0;
+    font-size: 12px;
+    margin-bottom: 16px;
+}
+
+div[data-testid="stTabs"] button {
+    color: #93a9bf;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #32d7ee !important;
+    border-bottom-color: #00c8e8 !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background-color: #00c8e8;
+}
+
+div[data-testid="stMetric"] {
+    background: #122239;
+    border: 1px solid #263d57;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #9bb0c6;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #edf6ff;
+    font-family: 'DM Mono', monospace;
+}
+
+div[data-testid="stDataFrame"] {
+    border: 1px solid #263d57;
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+.stButton > button {
+    background: linear-gradient(90deg, #087fae, #0873d4);
+    color: white;
+    border: 1px solid #159bc9;
+    border-radius: 7px;
+    font-weight: 700;
+    min-height: 40px;
+}
+
+.stButton > button:hover {
+    background: #119bc5;
+    color: white;
+    border-color: #42dafa;
+}
+
+.stDownloadButton > button {
+    background: #142b42;
+    color: #52d8ee;
+    border: 1px solid #28627c;
+    border-radius: 7px;
+}
+
+.stTextInput input, .stNumberInput input {
+    background: #111f32;
+    color: #eaf3ff;
+}
+
+.stSelectbox div[data-baseweb="select"] > div {
+    background: #111f32;
+}
+
+hr {
+    border-color: #233750;
+}
+
+div[data-testid="stAlert"] {
+    border-radius: 9px;
+}
+
+div[data-testid="stExpander"] {
+    border: 1px solid #263d57;
+    border-radius: 9px;
+}
+
+.footer {
+    color: #647d96;
+    font-size: 11px;
+    text-align: center;
+    padding-top: 35px;
+    border-top: 1px solid #203249;
+    margin-top: 40px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# HELPERS
+# ============================================================
 
 def secret(name: str):
     if os.getenv(name):
@@ -29,12 +288,16 @@ def secret(name: str):
 
 @st.cache_resource(show_spinner=False)
 def get_client(username: str, password: str, key: str) -> ErcotClient:
-    return ErcotClient(username, password, key)  # reused across reruns so the ID token is cached
+    return ErcotClient(username, password, key)
 
 
-@st.cache_data(ttl=3600, show_spinner="Pulling HB_HOUSTON prices from the ERCOT API...")
+@st.cache_data(ttl=3600, show_spinner="Pulling HB_HOUSTON prices from ERCOT...")
 def get_live_curve(_client, start: str, end: str, lookback: int, fwd: float, today: str):
-    return build_price_curve(_client, start, end, lookback_days=lookback, forward_atc=fwd or None)
+    return build_price_curve(
+        _client, start, end,
+        lookback_days=lookback,
+        forward_atc=fwd or None
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -52,157 +315,654 @@ def usd(x):
     return f"-${abs(x):,.0f}" if x < 0 else f"${x:,.0f}"
 
 
-# ------------------------------------------------------------------ sidebar
-with st.sidebar:
-    st.header("1 · Trade ticket")
-    counterparty = st.text_input("Counterparty", "Counterparty A")
-    side = st.selectbox("Side", ["BUY", "SELL"])
-    profile = st.selectbox("Profile", PROFILES, help="On-peak = Mon-Fri HE07-HE22")
-    mw = st.number_input("Volume (MW, flat)", min_value=1.0, value=50.0, step=5.0)
-    price = st.number_input("Contract price ($/MWh)", value=38.0, step=0.5)
-    start = st.date_input("Delivery start", date(2026, 12, 1))
-    end = st.date_input("Delivery end (exclusive)", date(2027, 1, 1))
-    add_book = st.checkbox("Include existing book (SELL 30 MW on-peak @ $45)", True)
+def section_title(title, description=None):
+    st.markdown(
+        f'<div class="section-heading">{title}</div>',
+        unsafe_allow_html=True
+    )
+    if description:
+        st.markdown(
+            f'<div class="section-caption">{description}</div>',
+            unsafe_allow_html=True
+        )
 
-    st.header("2 · Market data")
-    source = st.radio("HB_HOUSTON prices", ["ERCOT API (live)", "Synthetic demo (offline)"])
+
+def kpi_card(label, value, subtitle):
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-value">{value}</div>
+        <div class="kpi-sub">{subtitle}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ============================================================
+# SIDEBAR: TRADING CONFIGURATION
+# ============================================================
+
+with st.sidebar:
+
+    st.markdown("""
+    <div style="padding: 5px 0 22px 0;">
+        <div style="font-size:27px;font-weight:800;color:#eef7ff;">
+            ⚡ HOUSTON HUB
+        </div>
+        <div style="font-size:10px;color:#38d5ee;letter-spacing:2px;">
+            ENERGY TRADING TERMINAL
+        </div>
+        <div style="font-size:11px;color:#8299b1;margin-top:7px;">
+            GENAI POWERED · ERCOT MARKET
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("### 01 / Trade ticket")
+
+    counterparty = st.text_input("Counterparty", "Counterparty A")
+
+    side = st.selectbox("Trade side", ["BUY", "SELL"])
+
+    profile = st.selectbox(
+        "Delivery profile",
+        PROFILES,
+        help="On-peak = Mon-Fri HE07-HE22"
+    )
+
+    mw = st.number_input(
+        "Volume (MW)",
+        min_value=1.0,
+        value=50.0,
+        step=5.0
+    )
+
+    price = st.number_input(
+        "Contract price ($/MWh)",
+        value=38.0,
+        step=0.5
+    )
+
+    start = st.date_input(
+        "Delivery start",
+        date(2026, 12, 1)
+    )
+
+    end = st.date_input(
+        "Delivery end (exclusive)",
+        date(2027, 1, 1)
+    )
+
+    add_book = st.checkbox(
+        "Include existing book",
+        True,
+        help="SELL 30 MW on-peak @ $45/MWh"
+    )
+
+    st.divider()
+
+    st.markdown("### 02 / Market data")
+
+    source = st.radio(
+        "HB_HOUSTON price source",
+        ["ERCOT API (live)", "Synthetic demo (offline)"]
+    )
+
     creds = None
     lookback, fwd = 45, 0.0
+
     if source == "ERCOT API (live)":
-        lookback = st.slider("Forward-proxy lookback (days)", 14, 90, 45,
-                             help="Future hours are priced with the average hourly shape of this many recent days of real DAM prices.")
-        fwd = st.number_input("Forward ATC override ($/MWh, 0 = none)", min_value=0.0, value=0.0, step=0.5,
-                              help="Optional: rescale the proxy to a forward level you trust (e.g. from a broker).")
-        u, p, k = secret("ERCOT_USERNAME"), secret("ERCOT_PASSWORD"), secret("ERCOT_SUBSCRIPTION_KEY")
+
+        lookback = st.slider(
+            "Forward-proxy lookback (days)",
+            14, 90, 45
+        )
+
+        fwd = st.number_input(
+            "Forward ATC override ($/MWh)",
+            min_value=0.0,
+            value=0.0,
+            step=0.5
+        )
+
+        u = secret("ERCOT_USERNAME")
+        p = secret("ERCOT_PASSWORD")
+        k = secret("ERCOT_SUBSCRIPTION_KEY")
+
         if not (u and p and k):
             with st.expander("ERCOT API credentials", expanded=True):
-                st.caption("Or set ERCOT_USERNAME / ERCOT_PASSWORD / ERCOT_SUBSCRIPTION_KEY as env vars or Streamlit secrets. Not stored.")
-                u = st.text_input("Portal username (email)")
+                st.caption("Credentials are not stored by this form.")
+
+                u = st.text_input("Portal username")
                 p = st.text_input("Portal password", type="password")
                 k = st.text_input("Subscription key", type="password")
+
         creds = (u, p, k) if (u and p and k) else None
 
-    st.header("3 · Stress scenario")
-    pct = st.slider("All hours: price change (%)", -50, 100, 30)
-    abs_shift = st.slider("All hours: add ($/MWh)", -20, 100, 25)
-    peak = st.slider("Extra % on evening ramp (HE17-21)", 0, 300, 0)
+    st.divider()
 
-st.title("⚡ Houston Hub Power Trading Copilot")
-st.caption("ERCOT HB_HOUSTON · physical purchase → hourly delivery → net position → MtM → stress → AI explanation")
+    st.markdown("### 03 / Stress scenario")
 
-# ------------------------------------------------------------------ build + run
-trades = [Trade("BUY-001" if side == "BUY" else "SELL-001", counterparty, side, profile, mw, price, str(start), str(end))]
+    pct = st.slider(
+        "All hours: price change (%)",
+        -50, 100, 30
+    )
+
+    abs_shift = st.slider(
+        "All hours: add ($/MWh)",
+        -20, 100, 25
+    )
+
+    peak = st.slider(
+        "Evening ramp: extra (%)",
+        0, 300, 0
+    )
+
+    st.divider()
+
+    st.caption("GENAI HOUSTON HUB ETRM")
+    st.caption("Market analytics · Portfolio risk · AI insights")
+
+
+# ============================================================
+# MAIN HEADER
+# ============================================================
+
+st.markdown("""
+<div class="hero">
+    <div class="eyebrow">ERCOT / HB_HOUSTON / POWER MARKETS</div>
+    <div class="hero-title">Houston Hub Trading Copilot</div>
+    <div class="hero-subtitle">
+        Commodity trading intelligence · Hourly delivery ·
+        Portfolio valuation · Risk analytics · AI-powered insights
+    </div>
+    <div class="hero-tag">LIVE MARKET ANALYTICS</div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# DATA PIPELINE
+# ============================================================
+
+trades = [
+    Trade(
+        "BUY-001" if side == "BUY" else "SELL-001",
+        counterparty,
+        side,
+        profile,
+        mw,
+        price,
+        str(start),
+        str(end)
+    )
+]
+
 if add_book:
-    trades.append(Trade("SELL-RETAIL", "Retail Book", "SELL", "ON_PEAK", 30.0, 45.0, str(start), str(end)))
+    trades.append(
+        Trade(
+            "SELL-RETAIL",
+            "Retail Book",
+            "SELL",
+            "ON_PEAK",
+            30.0,
+            45.0,
+            str(start),
+            str(end)
+        )
+    )
+
 
 try:
     for t in trades:
         t.validate()
+
     if source == "ERCOT API (live)":
+
         if creds is None:
-            st.info("Enter your ERCOT API credentials in the sidebar (or switch to the synthetic demo).")
+            st.info(
+                "Enter your ERCOT credentials in the sidebar "
+                "or switch to synthetic demo mode."
+            )
             st.stop()
-        prices, meta, is_proxy = get_live_curve(get_client(*creds), str(start), str(end), lookback, fwd,
-                                                str(date.today()))
+
+        prices, meta, is_proxy = get_live_curve(
+            get_client(*creds),
+            str(start),
+            str(end),
+            lookback,
+            fwd,
+            str(date.today())
+        )
+
     else:
         prices = get_synthetic(str(start), str(end))
-        meta = {"source": "Synthetic demo data (not real ERCOT prices)"}
+
+        meta = {
+            "source": "Synthetic demo data (not real ERCOT prices)"
+        }
+
         is_proxy = None
-    stress = Scenario("Custom stress", pct_shift=pct, abs_shift=abs_shift, peak_pct_shift=peak)
-    res = run_pipeline(trades, prices, stress, price_meta=meta)
+
+    stress = Scenario(
+        "Custom stress",
+        pct_shift=pct,
+        abs_shift=abs_shift,
+        peak_pct_shift=peak
+    )
+
+    res = run_pipeline(
+        trades,
+        prices,
+        stress,
+        price_meta=meta
+    )
+
 except ErcotAPIError as e:
     st.error(f"ERCOT API problem: {e}")
     st.stop()
+
 except requests.RequestException as e:
     st.error(f"Network problem reaching ERCOT: {type(e).__name__}")
     st.stop()
+
 except ValueError as e:
     st.error(str(e))
     st.stop()
 
+
+# ============================================================
+# MARKET STATUS
+# ============================================================
+
 if source == "ERCOT API (live)":
+
     st.success(
-        f"Live ERCOT data: {meta['hours_dam_actual']:,} of {meta['hours_total']:,} delivery hours use published DAM prices; "
-        f"{meta['hours_forward_proxy']:,} use a forward proxy ({meta['proxy_method']}).",
-        icon="✅",
+        f"Live ERCOT data: {meta['hours_dam_actual']:,} of "
+        f"{meta['hours_total']:,} delivery hours use published DAM prices; "
+        f"{meta['hours_forward_proxy']:,} use a forward proxy "
+        f"({meta['proxy_method']})."
     )
+
     if meta.get("note"):
         st.warning(meta["note"])
+
     if meta["hours_forward_proxy"]:
-        st.caption("The forward proxy is NOT a market forward curve. Treat future-month MtM as indicative.")
+        st.caption(
+            "Forward proxy is not an exchange-traded forward curve. "
+            "Future-month MtM is indicative."
+        )
+
 else:
-    st.warning("Synthetic demo prices, not real ERCOT data.", icon="⚠️")
+    st.warning(
+        "DEMO MODE — Synthetic prices, not real ERCOT market data."
+    )
+
+
+# ============================================================
+# PORTFOLIO KPI CARDS
+# ============================================================
+
+section_title(
+    "Portfolio overview",
+    "Live trade valuation and delivery exposure"
+)
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Net volume (MWh)", f"{res['position']['net_mwh_total']:,.0f}")
-c2.metric("Base MtM", usd(res["base_total"]))
-c3.metric("Stressed MtM", usd(res["stress_total"]), usd(res["stress_total"] - res["base_total"]))
-c4.metric("Delivery hours", f"{res['position']['hours']:,}")
 
-tabs = st.tabs(["1 Trade", "2 Deliveries", "3 Net position", "4 MtM P&L", "5 Stress", "6 AI copilot"])
+with c1:
+    kpi_card(
+        "Net volume",
+        f"{res['position']['net_mwh_total']:,.0f}",
+        "Total net MWh"
+    )
+
+with c2:
+    kpi_card(
+        "Base MtM",
+        usd(res["base_total"]),
+        "Current market valuation"
+    )
+
+with c3:
+    kpi_card(
+        "Stressed MtM",
+        usd(res["stress_total"]),
+        f"Change: {usd(res['stress_total'] - res['base_total'])}"
+    )
+
+with c4:
+    kpi_card(
+        "Delivery hours",
+        f"{res['position']['hours']:,}",
+        "Hourly settlement periods"
+    )
+
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ============================================================
+# WORKSPACE NAVIGATION
+# ============================================================
+
+tabs = st.tabs([
+    "01  Trade Capture",
+    "02  Deliveries",
+    "03  Net Position",
+    "04  MtM & P&L",
+    "05  Stress Testing",
+    "06  AI Copilot"
+])
+
+
+# ============================================================
+# 01 TRADE CAPTURE
+# ============================================================
 
 with tabs[0]:
-    st.subheader("Trade capture")
-    st.dataframe(pd.DataFrame([t.to_dict() for t in res["trades"]]), hide_index=True)
-    st.caption("Sign convention: BUY = long (+MWh), SELL = short (-MWh).")
+
+    section_title(
+        "Trade capture",
+        "Physical power trade details and contract information"
+    )
+
+    st.dataframe(
+        pd.DataFrame([t.to_dict() for t in res["trades"]]),
+        hide_index=True,
+        use_container_width=True
+    )
+
+    st.info(
+        "Position convention: BUY = long (+MWh), "
+        "SELL = short (-MWh)."
+    )
+
+
+# ============================================================
+# 02 HOURLY DELIVERIES
+# ============================================================
 
 with tabs[1]:
-    st.subheader("Hourly delivery records")
+
+    section_title(
+        "Hourly delivery records",
+        "Scheduled delivery volumes across the selected contract period"
+    )
+
     d = res["deliveries"]
-    st.dataframe(d, hide_index=True)
-    st.download_button("Download CSV", d.to_csv(index=False), "delivery_records.csv", "text/csv")
+
+    st.dataframe(
+        d,
+        hide_index=True,
+        use_container_width=True
+    )
+
+    st.download_button(
+        "↓ Download delivery records CSV",
+        d.to_csv(index=False),
+        "delivery_records.csv",
+        "text/csv",
+        use_container_width=False
+    )
+
+
+# ============================================================
+# 03 NET PORTFOLIO POSITION
+# ============================================================
 
 with tabs[2]:
-    st.subheader("Net portfolio position (MWh per hour)")
-    st.line_chart(naive(res["net"]["net_mwh"]))
-    st.json(res["position"], expanded=False)
-    st.dataframe(res["net"])
+
+    section_title(
+        "Net portfolio position",
+        "Hourly aggregated long and short exposure"
+    )
+
+    st.line_chart(
+        naive(res["net"]["net_mwh"]),
+        use_container_width=True
+    )
+
+    st.markdown("#### Position summary")
+
+    left, right = st.columns([1, 2])
+
+    with left:
+        st.json(
+            res["position"],
+            expanded=True
+        )
+
+    with right:
+        st.dataframe(
+            res["net"],
+            use_container_width=True
+        )
+
+
+# ============================================================
+# 04 MARK TO MARKET & P&L
+# ============================================================
 
 with tabs[3]:
-    st.subheader("Market price curve used for MtM ($/MWh)")
+
+    section_title(
+        "Market valuation",
+        "Price curves, realized DAM pricing and mark-to-market exposure"
+    )
+
     curve = pd.DataFrame({"price": prices})
+
     if is_proxy is not None:
+
         curve["DAM actual"] = prices.where(~is_proxy)
         curve["Forward proxy"] = prices.where(is_proxy)
+
         curve = curve[["DAM actual", "Forward proxy"]]
+
     curve.index = curve.index.tz_localize(None)
-    st.line_chart(curve)
-    st.subheader("Mark-to-market P&L")
+
+    st.markdown("#### HB_HOUSTON market price curve")
+
+    st.line_chart(
+        curve,
+        use_container_width=True
+    )
+
+    st.divider()
+
+    st.markdown("#### Mark-to-market P&L")
+
+    st.caption(
+        "MtM = signed MWh × (market price − contract price), "
+        "summed over delivery hours."
+    )
+
     base = res["mtm_base"]
-    st.caption("MtM = signed MWh × (market price − contract price), summed over delivery hours.")
-    st.bar_chart(base.groupby(base["delivery_start"].dt.date)["mtm_pnl"].sum())
-    st.dataframe(res["by_trade"], hide_index=True)
-    st.dataframe(base[["trade_id", "delivery_start", "signed_mwh", "trade_price", "market_price", "mtm_pnl"]], hide_index=True)
+
+    daily_pnl = (
+        base.groupby(
+            base["delivery_start"].dt.date
+        )["mtm_pnl"].sum()
+    )
+
+    st.bar_chart(
+        daily_pnl,
+        use_container_width=True
+    )
+
+    st.markdown("#### P&L by trade")
+
+    st.dataframe(
+        res["by_trade"],
+        hide_index=True,
+        use_container_width=True
+    )
+
+    with st.expander("Detailed hourly MtM breakdown"):
+
+        st.dataframe(
+            base[
+                [
+                    "trade_id",
+                    "delivery_start",
+                    "signed_mwh",
+                    "trade_price",
+                    "market_price",
+                    "mtm_pnl"
+                ]
+            ],
+            hide_index=True,
+            use_container_width=True
+        )
+
+
+# ============================================================
+# 05 STRESS TESTING
+# ============================================================
 
 with tabs[4]:
-    st.subheader("Price stress")
+
+    section_title(
+        "Market stress testing",
+        "Evaluate portfolio sensitivity to market price movements"
+    )
+
+    delta = res["stress_total"] - res["base_total"]
+
+    a, b, c = st.columns(3)
+
+    a.metric("Base MtM", usd(res["base_total"]))
+
+    b.metric("Stressed MtM", usd(res["stress_total"]))
+
+    c.metric("P&L impact", usd(delta))
+
+    st.divider()
+
+    st.markdown("#### Scenario configuration")
+
     st.write(
-        f"Scenario: **{pct:+d}%** on all hours, **{abs_shift:+d} $/MWh**, extra **{peak:+d}%** on HE17-21 → "
-        f"P&L change **{usd(res['stress_total'] - res['base_total'])}**"
+        f"All hours: **{pct:+d}%** | "
+        f"Absolute shift: **{abs_shift:+d} $/MWh** | "
+        f"Evening ramp HE17-21: **{peak:+d}%**"
     )
-    both = pd.DataFrame(
-        {
-            "base price": res["mtm_base"].groupby("delivery_start")["market_price"].mean(),
-            "stressed price": res["mtm_stress"].groupby("delivery_start")["market_price"].mean(),
-        }
-    )
+
+    both = pd.DataFrame({
+        "Base price": (
+            res["mtm_base"]
+            .groupby("delivery_start")["market_price"]
+            .mean()
+        ),
+        "Stressed price": (
+            res["mtm_stress"]
+            .groupby("delivery_start")["market_price"]
+            .mean()
+        )
+    })
+
     both.index = both.index.tz_localize(None)
-    st.line_chart(both)
-    st.dataframe(res["scenario_table"], hide_index=True)
-    st.bar_chart(res["scenario_table"].set_index("scenario")["delta_vs_base_usd"])
+
+    st.markdown("#### Base vs stressed market prices")
+
+    st.line_chart(
+        both,
+        use_container_width=True
+    )
+
+    st.markdown("#### Scenario results")
+
+    st.dataframe(
+        res["scenario_table"],
+        hide_index=True,
+        use_container_width=True
+    )
+
+    st.markdown("#### Scenario P&L impact")
+
+    st.bar_chart(
+        res["scenario_table"].set_index("scenario")[
+            "delta_vs_base_usd"
+        ],
+        use_container_width=True
+    )
+
+
+# ============================================================
+# 06 AI COPILOT
+# ============================================================
 
 with tabs[5]:
-    st.subheader("AI copilot")
+
+    section_title(
+        "AI trading copilot",
+        "Ask questions about portfolio exposure, MtM, pricing and stress results"
+    )
+
     ctx = build_context(res)
+
     key = secret("ANTHROPIC_API_KEY")
+
     if not key:
-        key = st.text_input("Anthropic API key (optional, not stored)", type="password") or None
-        st.caption("No key → a deterministic rule-based explainer is used. Add a key for a Claude-written explanation.")
-    q = st.text_input("Ask a question (optional)", placeholder="Why does the SELL trade lose money in this scenario?")
-    if st.button("Explain the result", type="primary"):
-        with st.spinner("Thinking..."):
-            text, src = explain(ctx, question=q or None, api_key=key)
+
+        key = st.text_input(
+            "Anthropic API key (optional)",
+            type="password"
+        ) or None
+
+        st.caption(
+            "Without an API key, the deterministic rule-based "
+            "explainer is used."
+        )
+
+    st.markdown("#### Ask your trading copilot")
+
+    q = st.text_input(
+        "Question",
+        placeholder="Why does the SELL trade lose money in this scenario?"
+    )
+
+    if st.button(
+        "Generate AI explanation",
+        type="primary",
+        use_container_width=True
+    ):
+
+        with st.spinner("Analyzing portfolio and generating insights..."):
+
+            text, src = explain(
+                ctx,
+                question=q or None,
+                api_key=key
+            )
+
+        st.markdown("### Copilot insights")
+
         st.markdown(text)
-        st.caption(f"Source: {src}")
-    with st.expander("Context sent to the model (the model never computes numbers)"):
-        st.json(ctx)
+
+        st.caption(f"Explanation source: {src}")
+
+    with st.expander("View context provided to AI"):
+
+        st.caption(
+            "The model explains calculated results; "
+            "it does not calculate the underlying trading numbers."
+        )
+
+        st.json(ctx, expanded=False)
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.markdown("""
+<div class="footer">
+    GENAI HOUSTON HUB ETRM &nbsp; | &nbsp; ERCOT HB_HOUSTON
+    <br><br>
+    Commodity Analytics · Portfolio Risk · Market Intelligence
+    <br>
+    For demonstration and analytical purposes. Not an execution platform.
+</div>
+""", unsafe_allow_html=True)
