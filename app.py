@@ -897,16 +897,23 @@ with tabs[4]:
         use_container_width=True
     )
 
+
 # ============================================================
 # 06 VALUE AT RISK
 # ============================================================
-with tabssection_title(
+
+with tabs[5]:
+
+    section_title(
         "Value at Risk",
         "P&L risk of the hourly net position from HB_HOUSTON DAM price history"
     )
+
     if var_file is None:
-        st.info("Upload a DAM price history CSV in the sidebar "
-                "(date, hour_ending, price — or the raw ERCOT DAM SPP export).")
+        st.info(
+            "Upload a DAM price history CSV in the sidebar "
+            "(date, hour_ending, price — or the raw ERCOT DAM SPP export)."
+        )
     else:
         try:
             hist_curve = load_dam_history(var_file)
@@ -916,13 +923,22 @@ with tabssection_title(
             st.error(f"VaR input problem: {e}")
         else:
             tbl = out["table"]
+
             for col, (_, r) in zip(st.columns(3), tbl.iterrows()):
-                col.metric(f"{r['method']} VaR", usd(r["var_usd"]),
-                           f"ES {usd(r['es_usd'])}", delta_color="off")
-            st.caption(f"{out['days']} days of DAM history · {var_conf:.0%} confidence · "
-                       f"{var_horizon}-day horizon · ES = average loss beyond VaR")
+                col.metric(
+                    f"{r['method']} VaR",
+                    usd(r["var_usd"]),
+                    f"ES {usd(r['es_usd'])}",
+                    delta_color="off"
+                )
+
+            st.caption(
+                f"{out['days']} days of DAM history · {var_conf:.0%} confidence · "
+                f"{var_horizon}-day horizon · ES = average loss beyond VaR"
+            )
 
             st.divider()
+
             st.markdown("#### Historical 1-day P&L distribution")
             counts = pd.cut(pd.Series(out["hist_pnl"]), 30).value_counts().sort_index()
             counts.index = [round(i.mid) for i in counts.index]
@@ -935,11 +951,12 @@ with tabssection_title(
             with right:
                 st.markdown("#### VaR by method")
                 st.dataframe(tbl, hide_index=True, use_container_width=True)
+
 # ============================================================
 # 07 AI COPILOT
 # ============================================================
 
-with tabs[5]:
+with tabs[6]:
 
     section_title(
         "AI trading copilot",
