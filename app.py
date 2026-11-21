@@ -555,8 +555,6 @@ with st.sidebar:
         "Evening ramp: extra (%)",
         0, 300, 0
     )
-
-    st.divider()
     
 
 
