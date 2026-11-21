@@ -278,6 +278,17 @@ button[data-baseweb="tab"][aria-selected="true"] p {
     color: #32d7ee !important;
 }
 
+div[data-testid="stTabs"] button {
+    color: #93a9bf;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #32d7ee !important;
+    border-bottom-color: #00c8e8 !important;
+}
+
 div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
     background-color: #00c8e8;
 }
@@ -767,20 +778,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ============================================================
 # WORKSPACE NAVIGATION
 # ============================================================
-st.markdown("""
-<style>
-[role="tablist"] { gap: 28px !important; }
-[role="tab"] {
-    padding: 14px 26px !important;
-    height: auto !important;
-    background: #7a1020 !important;   /* TEMPORARY test colour, remove after it works */
-}
-[role="tab"] p, [role="tab"] div, [role="tab"] span {
-    font-size: 16px !important;
-}
-[role="tab"][aria-selected="true"] p { color: #32d7ee !important; }
-</style>
-""", unsafe_allow_html=True)
 
 tabs = st.tabs([
     "Trade Capture",
