@@ -1133,7 +1133,7 @@ st.markdown("""
     Commodity Analytics · Portfolio Risk · Market Intelligence
     <br><br>
     <span style="font-size:10px; color:#526a82;">
-        Created by Preet Modi
+        Developed by Preet Modi
     </span>
 </div>
 """, unsafe_allow_html=True)
