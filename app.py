@@ -5,6 +5,8 @@ from datetime import date
 import pandas as pd
 import requests
 import streamlit as st
+import numpy as np
+
 
 from etrm.copilot import build_context, explain
 from etrm.ercot_api import ErcotAPIError, ErcotClient
@@ -13,8 +15,8 @@ from etrm.pipeline import run_pipeline
 from etrm.pnl import Scenario
 from etrm.price_curve import build_price_curve, dam_history, history_to_curve
 from etrm.trade import PROFILES, Trade
+from datetime import date, timedelta
 
-import numpy as np
 from statistics import NormalDist
 
 _norm = NormalDist()
