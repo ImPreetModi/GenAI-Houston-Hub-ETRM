@@ -259,15 +259,23 @@ p, label, span {
     margin-bottom: 16px;
 }
 
-div[data-testid="stTabs"] button {
-    color: #93a9bf;
-    font-weight: 600;
-    font-size: 12px;
+button[data-baseweb="tab"] {
+    padding: 14px 24px !important;
+    margin-right: 8px !important;
 }
 
-div[data-testid="stTabs"] button[aria-selected="true"] {
+div[data-baseweb="tab-list"] {
+    gap: 16px !important;
+}
+
+button[data-baseweb="tab"] p {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #93a9bf !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] p {
     color: #32d7ee !important;
-    border-bottom-color: #00c8e8 !important;
 }
 
 div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
