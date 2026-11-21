@@ -477,12 +477,14 @@ with st.sidebar:
         value=38.0,
         step=0.5
     )
+    
+    today = date.today()
 
     start = st.date_input(
         "Delivery start",
         today
     )
-
+    
     end = st.date_input(
         "Delivery end (exclusive)",
         today + timedelta(days=1)
