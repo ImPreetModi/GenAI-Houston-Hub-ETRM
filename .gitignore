@@ -3,3 +3,6 @@ __pycache__/
 .env
 .streamlit/secrets.toml
 .venv/
+venv/
+app.py.bak
+apply_var_patch.py

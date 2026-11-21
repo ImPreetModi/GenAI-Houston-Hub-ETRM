@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from etrm import ercot_api
 from etrm.ercot_api import ErcotAPIError, ErcotClient, parse_dam_spp
-from etrm.price_curve import build_price_curve
+from etrm.price_curve import build_price_curve, dam_history, history_to_curve
 from etrm.pnl import Scenario
 from etrm.pipeline import run_pipeline
 from etrm.trade import Trade
@@ -142,6 +142,34 @@ def test_end_to_end_with_live_style_prices():
     res = run_pipeline(t, prices, Scenario("s", pct_shift=20), price_meta=meta)
     assert res["price_meta"]["hours_forward_proxy"] == 744
     assert "forward proxy" in rule_based_explanation(build_context(res))
+
+
+def test_dam_history_90_days_in_chunks():
+    sess = FakeSession(make_rows("2026-08-01", "2026-11-20"), page_cap=800)
+    c = ErcotClient("u", "p", "KEY", session=sess)
+    asof = pd.Timestamp("2026-11-20 10:00", tz="America/Chicago")
+    s = dam_history(c, days=90, end=asof)
+    # 90 days x 24h, plus the extra hour on the Nov 1 fall-back day
+    assert len(s) == 90 * 24 + 1 and s.index.is_unique
+    assert s.index.min().date().isoformat() == "2026-08-23" and s.index.max().date().isoformat() == "2026-11-20"
+    curve = history_to_curve(s)
+    assert curve.shape == (90, 24) and not curve.isna().any().any()
+
+
+def test_dam_history_stops_gracefully_when_older_data_missing():
+    c = client(make_rows("2026-10-15", "2026-11-20"))  # only ~37 days exist
+    asof = pd.Timestamp("2026-11-20 10:00", tz="America/Chicago")
+    s = dam_history(c, days=90, end=asof)
+    assert 30 <= len(s) // 24 <= 37
+
+
+def test_dam_history_raises_when_no_data_at_all():
+    c = client([])
+    try:
+        dam_history(c, days=30, end=pd.Timestamp("2026-11-20", tz="America/Chicago"))
+        raise AssertionError("expected error")
+    except ErcotAPIError:
+        pass
 
 
 if __name__ == "__main__":

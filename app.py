@@ -11,7 +11,7 @@ from etrm.ercot_api import ErcotAPIError, ErcotClient
 from etrm.market_data import synthetic_hub_prices
 from etrm.pipeline import run_pipeline
 from etrm.pnl import Scenario
-from etrm.price_curve import build_price_curve
+from etrm.price_curve import build_price_curve, dam_history, history_to_curve
 from etrm.trade import PROFILES, Trade
 
 import numpy as np
@@ -387,6 +387,18 @@ def get_synthetic(start: str, end: str) -> pd.Series:
     return synthetic_hub_prices(start, end)
 
 
+@st.cache_data(ttl=3600, show_spinner="Pulling DAM price history from ERCOT...")
+def get_history_live(_client, days: int, today: str):
+    return dam_history(_client, days=days)
+
+
+@st.cache_data(show_spinner=False)
+def get_history_synth(days: int, today: str):
+    end = pd.Timestamp(today)
+    return synthetic_hub_prices((end - pd.Timedelta(days=days)).strftime("%Y-%m-%d"),
+                                (end + pd.Timedelta(days=1)).strftime("%Y-%m-%d"))
+
+
 def naive(s):
     s = s.copy()
     s.index = s.index.tz_localize(None)
@@ -548,7 +560,8 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### 04 / Value at Risk")
-    var_file = st.file_uploader("DAM price history CSV (90 days)", type="csv")
+    var_days = st.slider("History window (days)", 30, 120, 90,
+                         help="Pulled automatically from the ERCOT API (live mode) or generated (demo mode).")
     var_conf = st.select_slider("Confidence", [0.90, 0.95, 0.99], value=0.95,
                                 format_func=lambda x: f"{x:.0%}")
     var_horizon = st.number_input("Horizon (days)", min_value=1, max_value=10, value=1)
@@ -990,17 +1003,18 @@ with tabs[5]:
         "P&L risk of the hourly net position from HB_HOUSTON DAM price history"
     )
 
-    if var_file is None:
-        st.info(
-            "Upload a DAM price history CSV in the sidebar "
-            "(date, hour_ending, price — or the raw ERCOT DAM SPP export)."
-        )
-    else:
+    if True:
         try:
-            hist_curve = load_dam_history(var_file)
+            if source == "ERCOT API (live)":
+                hist_series = get_history_live(get_client(*creds), int(var_days), str(date.today()))
+            else:
+                hist_series = get_history_synth(int(var_days), str(date.today()))
+            hist_curve = history_to_curve(hist_series)
+            if len(hist_curve) < 30:
+                raise ValueError(f"Need at least 30 days of history, got {len(hist_curve)}")
             pos = position_profile(res["net"])
             out = var_summary(hist_curve, pos, conf=var_conf, horizon_days=var_horizon)
-        except ValueError as e:
+        except (ValueError, ErcotAPIError, requests.RequestException) as e:
             st.error(f"VaR input problem: {e}")
         else:
             tbl = out["table"]
@@ -1106,14 +1120,9 @@ st.markdown("""
     GENAI HOUSTON HUB ETRM &nbsp; | &nbsp; ERCOT HB_HOUSTON
     <br><br>
     Commodity Analytics · Portfolio Risk · Market Intelligence
-<<<<<<< Updated upstream
-    <br>
-    PREET MODI
-=======
     <br><br>
     <span style="font-size:10px; color:#526a82;">
         Created by Preet Modi
     </span>
->>>>>>> Stashed changes
 </div>
 """, unsafe_allow_html=True)

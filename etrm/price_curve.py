@@ -8,6 +8,8 @@ This is a stand-in for a proper forward curve and is labelled as such everywhere
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pandas as pd
 
 from .ercot_api import ErcotAPIError, ErcotClient
@@ -58,3 +60,41 @@ def build_price_curve(client: ErcotClient, delivery_start: str, delivery_end: st
         "note": note,
     }
     return prices, meta, missing
+
+
+def dam_history(client: ErcotClient, days: int = 90, end=None, settlement_point: str = HUB,
+                chunk_days: int = 30) -> pd.Series:
+    """Hourly HB_HOUSTON DAM prices for the last `days` days (ending today), fetched in chunks.
+
+    Walks backwards chunk by chunk. If ERCOT has no data (or rejects the request) for an older
+    chunk, stops and returns what it has, so the caller can see how many days it actually got.
+    """
+    end_day = (end or pd.Timestamp.now(tz=TZ)).date()
+    pieces, remaining, cur_end = [], int(days), end_day
+    while remaining > 0:
+        n = min(chunk_days, remaining)
+        cur_start = cur_end - timedelta(days=n - 1)
+        try:
+            s = client.dam_spp(cur_start, cur_end, settlement_point)
+        except ErcotAPIError as e:
+            if pieces and e.status in (400, 404):
+                break  # older data not available through this endpoint
+            raise
+        if s.empty and pieces:
+            break
+        if not s.empty:
+            pieces.append(s)
+        cur_end = cur_start - timedelta(days=1)
+        remaining -= n
+    if not pieces:
+        raise ErcotAPIError("ERCOT returned no DAM price history for the requested window")
+    out = pd.concat(pieces).sort_index()
+    return out[~out.index.duplicated(keep="first")]
+
+
+def history_to_curve(prices: pd.Series) -> pd.DataFrame:
+    """Hourly series -> (date x hour-ending 1..24) matrix, the shape the VaR code expects."""
+    d = pd.DataFrame({"date": prices.index.date, "he": prices.index.hour + 1, "price": prices.to_numpy()})
+    curve = (d.pivot_table(index="date", columns="he", values="price", aggfunc="mean")
+              .sort_index().reindex(columns=range(1, 25)))
+    return curve.dropna(thresh=20).ffill(axis=1).bfill(axis=1)
