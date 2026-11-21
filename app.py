@@ -1102,7 +1102,14 @@ st.markdown("""
     GENAI HOUSTON HUB ETRM &nbsp; | &nbsp; ERCOT HB_HOUSTON
     <br><br>
     Commodity Analytics · Portfolio Risk · Market Intelligence
+<<<<<<< Updated upstream
     <br>
     PREET MODI
+=======
+    <br><br>
+    <span style="font-size:10px; color:#526a82;">
+        Created by Preet Modi
+    </span>
+>>>>>>> Stashed changes
 </div>
 """, unsafe_allow_html=True)
