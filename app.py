@@ -793,7 +793,7 @@ st.markdown("""
     font-weight: 600 !important;
 }
 
-[role="tab"][aria-selected="true"] p { color: #32d7ee !important; }
+[role="tab"][aria-selected="true"] p { color: #1598aa !important; }
 </style>
 """, unsafe_allow_html=True)
 
