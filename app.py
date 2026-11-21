@@ -761,13 +761,13 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ============================================================
 
 tabs = st.tabs([
-    "01  Trade Capture",
-    "02  Deliveries",
-    "03  Net Position",
-    "04  MtM & P&L",
-    "05  Stress Testing",
-    "06  VaR & Risk",
-    "07  AI Copilot"
+    "Trade Capture",
+    "Deliveries",
+    "Net Position",
+    "MtM & P&L",
+    "Stress Testing",
+    "VaR & Risk",
+    "AI Copilot"
 ])
 
 
