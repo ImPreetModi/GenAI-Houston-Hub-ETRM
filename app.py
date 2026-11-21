@@ -259,22 +259,19 @@ p, label, span {
     margin-bottom: 16px;
 }
 
-div[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 22px;
-}
-
 div[data-testid="stTabs"] button {
-    padding: 12px 20px;
-}
-
-div[data-testid="stTabs"] button p {
     color: #93a9bf;
     font-weight: 600;
-    font-size: 14px !important;
+    font-size: 12px;
 }
 
-div[data-testid="stTabs"] button[aria-selected="true"] p {
+div[data-testid="stTabs"] button[aria-selected="true"] {
     color: #32d7ee !important;
+    border-bottom-color: #00c8e8 !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background-color: #00c8e8;
 }
 
 div[data-testid="stMetric"] {
