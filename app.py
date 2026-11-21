@@ -480,12 +480,12 @@ with st.sidebar:
 
     start = st.date_input(
         "Delivery start",
-        date(2026, 12, 1)
+        today
     )
 
     end = st.date_input(
         "Delivery end (exclusive)",
-        date(2027, 1, 1)
+        today + timedelta(days=1)
     )
 
     add_book = st.checkbox(
