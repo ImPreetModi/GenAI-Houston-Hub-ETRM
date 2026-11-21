@@ -559,8 +559,7 @@ with st.sidebar:
 
     st.divider()
     
-    st.caption("GENAI HOUSTON HUB ETRM")
-    st.caption("Market analytics · Portfolio risk · AI insights")
+
 
     st.divider()
     st.markdown("### 04 / Value at Risk")
@@ -570,7 +569,13 @@ with st.sidebar:
                                 format_func=lambda x: f"{x:.0%}")
     var_horizon = st.number_input("Horizon (days)", min_value=1, max_value=10, value=1)
 
-
+    st.caption("GENAI HOUSTON HUB ETRM")
+    st.caption("Market analytics · Portfolio risk · AI insights")
+    st.markdown(
+    '[<img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" width="14" style="vertical-align:middle; filter:invert(35%);"/>](https://www.linkedin.com/in/preetjmodi/) '
+    '<span style="font-size:13px; color:gray;">Designed by Preet Modi</span>',
+    unsafe_allow_html=True
+    )
 # ============================================================
 # MAIN HEADER
 # ============================================================
