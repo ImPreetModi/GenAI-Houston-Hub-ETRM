@@ -568,8 +568,7 @@ with st.sidebar:
                                 format_func=lambda x: f"{x:.0%}")
     var_horizon = st.number_input("Horizon (days)", min_value=1, max_value=10, value=1)
 
-    st.caption("GENAI HOUSTON HUB ETRM")
-    st.caption("Market analytics · Portfolio risk · AI insights")
+
     st.markdown(
     '<span style="font-size:13px; color:gray;">Developed by Preet Modi</span>'
     '&nbsp;&nbsp;&nbsp;'
