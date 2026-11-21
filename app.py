@@ -356,10 +356,14 @@ div[data-testid="stExpander"] {
 # ============================================================
 
 def secret(name: str):
-    if os.getenv(name):
-        return os.getenv(name)
+    value = os.getenv(name)
+
+    if value:
+        return value
+
     try:
-        return st.secrets[name]
+        value = st.secrets.get(name)
+        return value if value else None
     except Exception:
         return None
 
