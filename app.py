@@ -767,6 +767,20 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ============================================================
 # WORKSPACE NAVIGATION
 # ============================================================
+st.markdown("""
+<style>
+[role="tablist"] { gap: 28px !important; }
+[role="tab"] {
+    padding: 14px 26px !important;
+    height: auto !important;
+    background: #7a1020 !important;   /* TEMPORARY test colour, remove after it works */
+}
+[role="tab"] p, [role="tab"] div, [role="tab"] span {
+    font-size: 16px !important;
+}
+[role="tab"][aria-selected="true"] p { color: #32d7ee !important; }
+</style>
+""", unsafe_allow_html=True)
 
 tabs = st.tabs([
     "Trade Capture",
