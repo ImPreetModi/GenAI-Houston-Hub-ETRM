@@ -571,11 +571,14 @@ with st.sidebar:
     st.caption("GENAI HOUSTON HUB ETRM")
     st.caption("Market analytics · Portfolio risk · AI insights")
     st.markdown(
-        '[<img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" width="14" style="vertical-align:middle; filter:invert(35%);"/>](https://www.linkedin.com/in/preetjmodi/) '
-        '<span style="font-size:13px; color:gray;"><br>Designed by Preet Modi</span>',
-        
-        unsafe_allow_html=True
-    )
+    '<span style="font-size:13px; color:gray;">Developed by Preet Modi</span>'
+    '&nbsp;&nbsp;&nbsp;'
+    '<a href="https://www.linkedin.com/in/preetjmodi/" target="_blank">'
+    '<img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg" '
+    'width="14" style="vertical-align:middle; filter:invert(50%);">'
+    '</a>',
+    unsafe_allow_html=True
+)
 # ============================================================
 # MAIN HEADER
 # ============================================================
