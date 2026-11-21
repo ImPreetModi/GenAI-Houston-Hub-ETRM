@@ -761,7 +761,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ============================================================
 
 tabs = st.tabs([
-    "Trade Capture",
+    "Trade Capture    ",
     "Deliveries",
     "Net Position",
     "MtM & P&L",
